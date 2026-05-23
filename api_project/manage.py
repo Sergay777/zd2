@@ -4,8 +4,8 @@ import os
 import sys
 
 def main():
-    # Добавляем путь к внутренней папке с проектом
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'api_project'))
+    # Добавляем путь к внутреннему проекту api_app/api_project, где находится пакет api_project
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'api_app', 'api_project'))
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'api_project.settings')
     try:
         from django.core.management import execute_from_command_line

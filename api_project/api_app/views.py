@@ -16,12 +16,11 @@ class FullDataAPIView(APIView):
     def get(self, request):
         categories = Category.objects.all()
         women = Women.objects.filter(is_published=True)
-        
-        data = {
-            'categories': CategorySerializer(categories, many=True).data,
-            'women': WomenManualSerializer(women, many=True).data
-        }
-        return Response(data)
+        serializer = CombinedDataSerializer({
+            'categories': categories,
+            'women': women
+        })
+        return Response(serializer.data)
     
 class WomenCreateAPIView(generics.CreateAPIView):
     queryset = Women.objects.all()

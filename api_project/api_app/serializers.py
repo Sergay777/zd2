@@ -32,6 +32,17 @@ class WomenManualSerializer(serializers.Serializer):
         return instance
 
 
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ['id', 'name']
+
+
+class CombinedDataSerializer(serializers.Serializer):
+    categories = CategorySerializer(many=True)
+    women = WomenManualSerializer(many=True)
+
+
 # ---------- ModelSerializer (быстрый старт) ----------
 class WomenModelSerializer(serializers.ModelSerializer):
     class Meta:

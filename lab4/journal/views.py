@@ -194,14 +194,16 @@ def my_attendance(request):
     student = getattr(request.user, 'student', None)
     if not student:
         return render(request, 'journal/my_attendance.html', {'attendance_list': []})
-    attendance_list = student.attendance_set.all().order_by('-date')
+    attendance_list = student.attendance_set.select_related('id_lesson__id_subject', 'id_lesson__id_teacher__user', 'status').order_by('-id_lesson__date')
     return render(request, 'journal/my_attendance.html', {'attendance_list': attendance_list})
 
 @login_required
 def group_stats(request):
+    present_filter = Q(student__attendance__status__name__icontains='Присут')
     stats = Group.objects.annotate(
         student_count=Count('student', distinct=True),
-        present_count=Count('student__attendance', filter=Q(student__attendance__present=True))
+        present_count=Count('student__attendance', filter=present_filter, distinct=True),
+        total_attendance=Count('student__attendance', distinct=True)
     )
     return render(request, 'journal/group_stats.html', {'stats': stats})
 
@@ -436,32 +438,60 @@ class MyAttendanceView(LoginRequiredMixin, StudentRequiredMixin, ListView):
         
         return context
 
-import requests
+try:
+    import requests
+except ImportError:
+    requests = None
+
+import json
+import urllib.request
+import urllib.error
 from django.shortcuts import render
 
 def api_women_list(request):
     api_url = 'http://127.0.0.1:8002/api/v1/full/'  # используем комбинированный эндпоинт
-    data = None
-    error = None
-    articles = []
     categories = []
+    articles = []
+    error = None
+
+    def _parse_json_response(body):
+        try:
+            return json.loads(body)
+        except Exception as exc:
+            return {'error': f'Ошибка разбора JSON: {exc}'}
     
-    try:
-        response = requests.get(api_url, timeout=5)
-        if response.status_code == 200:
-            full_data = response.json()
-            # Извлекаем статьи из ключа 'women'
-            articles = full_data.get('women', [])
-            # Также можно получить категории, если нужно
-            categories = full_data.get('categories', [])
-        else:
-            error = f'API вернул ошибку: {response.status_code}'
-    except requests.exceptions.ConnectionError:
-        error = 'Не удалось подключиться к API. Убедитесь, что API-сервер запущен на порту 8002.'
-    except requests.exceptions.Timeout:
-        error = 'Превышено время ожидания ответа от API.'
-    except Exception as e:
-        error = f'Ошибка при запросе к API: {str(e)}'
+    if requests is not None:
+        try:
+            response = requests.get(api_url, timeout=5)
+            if response.status_code == 200:
+                full_data = response.json()
+                articles = full_data.get('women', [])
+                categories = full_data.get('categories', [])
+            else:
+                error = f'API вернул ошибку: {response.status_code}'
+        except requests.exceptions.ConnectionError:
+            error = 'Не удалось подключиться к API. Убедитесь, что API-сервер запущен на порту 8002.'
+        except requests.exceptions.Timeout:
+            error = 'Превышено время ожидания ответа от API.'
+        except Exception as exc:
+            error = f'Ошибка при запросе к API: {exc}'
+    else:
+        try:
+            with urllib.request.urlopen(api_url, timeout=5) as response:
+                if response.status == 200:
+                    body = response.read()
+                    full_data = _parse_json_response(body)
+                    if 'error' in full_data:
+                        error = full_data['error']
+                    else:
+                        articles = full_data.get('women', [])
+                        categories = full_data.get('categories', [])
+                else:
+                    error = f'API вернул ошибку: {response.status}'
+        except urllib.error.URLError:
+            error = 'Не удалось подключиться к API. Убедитесь, что API-сервер запущен на порту 8002.'
+        except Exception as exc:
+            error = f'Ошибка при запросе к API: {exc}'
     
     context = {
         'articles': articles,
