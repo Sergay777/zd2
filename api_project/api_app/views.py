@@ -2,11 +2,11 @@ from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import Women, Category
-from .serializers import WomenSerializer, CategorySerializer, CombinedDataSerializer
+from .serializers import CategorySerializer, CombinedDataSerializer, WomenManualSerializer
 
 class WomenListAPIView(generics.ListAPIView):
     queryset = Women.objects.filter(is_published=True)
-    serializer_class = WomenSerializer
+    serializer_class = WomenManualSerializer
 
 class CategoryListAPIView(generics.ListAPIView):
     queryset = Category.objects.all()
@@ -19,6 +19,14 @@ class FullDataAPIView(APIView):
         
         data = {
             'categories': CategorySerializer(categories, many=True).data,
-            'women': WomenSerializer(women, many=True).data
+            'women': WomenManualSerializer(women, many=True).data
         }
         return Response(data)
+    
+class WomenCreateAPIView(generics.CreateAPIView):
+    queryset = Women.objects.all()
+    serializer_class = WomenManualSerializer
+
+class WomenRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Women.objects.all()
+    serializer_class = WomenManualSerializer
